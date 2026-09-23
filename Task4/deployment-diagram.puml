@@ -1,0 +1,69 @@
+@startuml deployment-diagram
+title Africa Delivery - Deployment Diagram
+skinparam shadowing false
+left to right direction
+
+node "Устройство покупателя" as client #FFF2CC {
+  artifact "Android app"
+}
+
+cloud "CDN" as cdn #E2E2E2 {
+  node "CloudFront PoP" as pop
+}
+
+node "AWS af-south-1, Кейптаун (EKS, 1 кластер)" as region #DAE8FC {
+  node "AZ-a" as aza #FFFFFF {
+    node "app-1\nМонолит (Go), под EKS" as app1
+    database "PostgreSQL primary" as pg1
+  }
+  node "AZ-b" as azb #FFFFFF {
+    node "app-2\nМонолит (Go), под EKS" as app2
+    database "PostgreSQL реплика синк" as pg2
+  }
+  node "ElastiCache Redis" as redis
+  node "SQS" as sqs
+  node "S3" as s3
+  node "KMS\n(ключи облачного контура)" as kms
+  node "Application Load Balancer" as alb
+}
+
+node "MDXi - локальный провайдер" as lagos #D5E8D4 {
+  node "pii-1\nМодуль ПДн (Go)" as pii1
+  database "PostgreSQL ПДн primary" as png1
+  database "PostgreSQL ПДн реплика" as png2
+  node "Vault" as vault
+}
+
+node "Вторая площадка, Нигерия" as lagos2 #D5E8D4 {
+  database "Бэкапы ПДн" as backups
+}
+
+node "Партнеры (SaaS)" as partners #F8CECC {
+  node "M-Pesa / Flutterwave / Paystack" as pay
+  node "Sendbox / Sendy" as log
+  node "SMS/USSD-шлюз" as sms
+}
+
+client --> pop : HTTPS
+client --> alb : HTTPS
+pop --> alb : cache miss
+alb --> app1
+alb --> app2
+app1 --> pg1
+app2 --> pg1
+pg1 --> pg2 : sync replica
+app1 --> redis
+app2 --> sqs
+app1 --> s3
+app1 --> kms
+app1 --> pii1 : HTTPS + mTLS\n~150 мс
+app2 --> pii1 : HTTPS + mTLS
+pii1 --> png1
+png1 --> png2 : async replica
+pii1 --> vault
+png1 --> backups : бэкап ежедневно
+app1 --> pay : HTTPS
+app1 --> log : HTTPS
+app1 --> sms : HTTPS
+
+@enduml

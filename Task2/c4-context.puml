@@ -1,0 +1,35 @@
+@startuml c4-context
+!include <C4/C4_Context>
+
+title Africa Delivery - C4 Context Diagram
+
+Person(buyer, "Покупатель", "Городской покупатель")
+Person(seller, "Продавец", "Малый/средний бизнес")
+Person(ceo, "CEO / Инвестор")
+
+System(ad, "Africa Delivery", "Модульный монолит: каталог, заказы, платежная оркестрация, уведомления, интеграции")
+
+System_Ext(mpesa, "M-Pesa", "Платежный провайдер, Кения")
+System_Ext(flutterwave, "Flutterwave", "Платежный провайдер, Нигерия")
+System_Ext(paystack, "Paystack", "Платежный провайдер, Нигерия")
+System_Ext(sendbox, "Sendbox", "Логистический провайдер, Нигерия")
+System_Ext(sendy, "Sendy", "Логистический провайдер, Кения")
+System_Ext(whatsapp, "WhatsApp Business API", "Онбординг и управление товарами для продавцов без ЛК")
+System_Ext(smsgw, "SMS/USSD-шлюз", "Офлайн-заказы и уведомления для зон без интернета")
+
+Rel(buyer, ad, "Каталог, заказ, оплата, трекинг", "HTTPS / мобильное приложение")
+Rel(buyer, smsgw, "Заказ и статус без интернета", "USSD / SMS")
+Rel(smsgw, ad, "Сессии USSD, смс-события", "API")
+Rel(seller, whatsapp, "Регистрация, товары, заказы", "WhatsApp")
+Rel(whatsapp, ad, "Webhook-и сообщений", "API")
+Rel(seller, ad, "ЛК продавца (фаза 2)", "HTTPS")
+Rel(ceo, ad, "Дашборд метрик", "HTTPS")
+
+Rel(ad, mpesa, "Прием платежей, выплаты продавцам", "API")
+Rel(ad, flutterwave, "Прием платежей, выплаты", "API")
+Rel(ad, paystack, "Прием платежей", "API")
+Rel(ad, sendbox, "Создание отправлений, статусы", "API")
+Rel(ad, sendy, "Создание отправлений, статусы", "API")
+Rel(ad, smsgw, "Уведомления покупателям", "API")
+
+@enduml

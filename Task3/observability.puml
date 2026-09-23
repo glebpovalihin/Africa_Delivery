@@ -1,0 +1,33 @@
+@startuml observability
+title Africa Delivery - схема сбора наблюдаемости
+skinparam shadowing false
+left to right direction
+
+node "Монолит Africa Delivery\n(OTel SDK: метрики, логи, трейсы)" as app #FFF2CC
+node "Мобильный клиент\n(время до первого товара)" as mobile #FFF2CC
+node "Партнерские API\n(webhook-статусы, health)" as partners #FFF2CC
+
+node "OpenTelemetry Collector" as otel #D5E8D4
+
+database "Prometheus\n(метрики)" as prom #DAE8FC
+database "Loki\n(логи)" as loki #DAE8FC
+database "Tempo\n(трейсы)" as tempo #DAE8FC
+
+node "Grafana\n(дашборды)" as grafana #F8CECC
+node "Alertmanager" as alert #F8CECC
+node "Telegram (P2)\nСмс (P1)" as channels #E2E2E2
+
+app --> otel
+mobile --> otel
+partners --> otel
+
+otel --> prom : метрики
+otel --> loki : логи (JSON + trace_id)
+otel --> tempo : трейсы (1%, платежи 100%)
+
+prom --> grafana
+loki --> grafana
+tempo --> grafana
+prom --> alert : правила burn rate
+alert --> channels
+@enduml

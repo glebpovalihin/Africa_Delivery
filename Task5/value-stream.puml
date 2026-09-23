@@ -1,0 +1,64 @@
+@startuml value-stream
+title Africa Delivery - Value Stream: от привлечения до получения заказа
+skinparam shadowing false
+left to right direction
+skinparam rectangle {
+  BackgroundColor #DAE8FC
+}
+skinparam note {
+  BackgroundColor #FFF2CC
+}
+
+rectangle "1. Привлечение" as s1 #F8CECC
+rectangle "2. Витрина" as s2
+rectangle "3. Заказ" as s3
+rectangle "4. Оплата" as s4
+rectangle "5. Доставка" as s5
+rectangle "6. Получение\nи постпродажа" as s6
+
+s1 --> s2
+s2 --> s3
+s3 --> s4
+s4 --> s5
+s5 --> s6
+
+note bottom of s1
+  Маркетинговые механики (Build)
+  Локализация (Build)
+  Consent management (Build)
+  Каналы: Android, PWA, USSD (Partner)
+end note
+
+note bottom of s2
+  Каталог и категории (Build)
+  Поиск (Build)
+  Контент и фото (Buy: S3+CDN)
+  Кеширование витрины (Build)
+end note
+
+note bottom of s3
+  Корзина и оформление (Build)
+  Офлайн-заказ USSD (Partner)
+  Резерв остатков на распродаже (Build)
+end note
+
+note bottom of s4
+  Прием платежей (Partner)
+  Платежный журнал (Build)
+  Антифрод-правила (Build)
+end note
+
+note bottom of s5
+  Отправления и тарифы (Partner)
+  Трекинг статусов (Partner + Build)
+  Уведомления (Partner + Build)
+end note
+
+note bottom of s6
+  Возвраты (Build, ручной процесс)
+  Отзывы и рейтинги (Build)
+  Выплаты продавцам (Partner)
+  Поддержка (Buy: helpdesk SaaS)
+end note
+
+@enduml
