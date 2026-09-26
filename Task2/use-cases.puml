@@ -1,0 +1,41 @@
+@startuml use-cases
+left to right direction
+title Africa Delivery - Use Cases MVP (пилот 15.10)
+
+actor "Покупатель" as buyer
+actor "Покупатель (офлайн)" as offline
+actor "Продавец" as seller
+actor "CEO / Инвестор" as ceo
+
+rectangle "Africa Delivery" {
+  usecase "Просмотр каталога" as UC1
+  usecase "Поиск товара" as UC2
+  usecase "Оформление заказа" as UC3
+  usecase "Оплата заказа\n(M-Pesa / Flutterwave)" as UC4
+  usecase "Отслеживание заказа" as UC5
+  usecase "Управление в личном кабинете покупателя" as UC6
+  usecase "Заказ через USSD/смс" as UC7
+  usecase "Регистрация и онбординг\nчерез WhatsApp" as UC8
+  usecase "Управление товарами" as UC9
+  usecase "Получение выплаты\nв день продажи" as UC10
+  usecase "Дашборд: регистрации,\nзаказы, выручка" as UC11
+  usecase "Смс/push-уведомления\nо статусе заказа" as UC12
+}
+
+buyer --> UC1
+buyer --> UC2
+buyer --> UC3
+buyer --> UC5
+buyer --> UC6
+offline --> UC7
+seller --> UC8
+seller --> UC9
+seller --> UC10
+ceo --> UC11
+
+UC3 ..> UC4 : include
+UC3 ..> UC12 : include
+UC7 ..> UC3 : include
+UC5 ..> UC12 : include
+
+@enduml
