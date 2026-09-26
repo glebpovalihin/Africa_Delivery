@@ -1,5 +1,7 @@
 # SLO-контракт. Каталог
 
+В формате OpenSLO: [./catalog.yaml](./catalog.yaml)
+
 ## SLI
 
 | SLI | Определение | Источник измерения |

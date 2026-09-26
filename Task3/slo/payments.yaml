@@ -1,0 +1,119 @@
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: payments-availability
+  displayName: Доступность приема платежа
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      sum(rate(payments_accepted_total{service="payments"}[5m]))
+      /
+      sum(rate(payments_initiated_total{service="payments",error!="validation"}[5m]))
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: payments-completion
+  displayName: Завершение платежа с финальным статусом < 5 мин
+spec:
+  thresholdMetric:
+    metricSource:
+      type: PostgreSQL
+    raw: |
+      SELECT count(*) FILTER (WHERE final_status_at - initiated_at < interval '5 minutes')
+      FROM payment_journal
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: payments-initiation-latency
+  displayName: Задержка инициации P95 < 2 с
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      histogram_quantile(0.95,
+        sum(rate(payment_initiation_duration_seconds_bucket{service="payments"}[5m])) by (le)
+      ) < 2
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: payments-availability
+  displayName: Платежи - доступность приема 99,9%
+spec:
+  service: payments
+  indicatorRef: payments-availability
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.999
+  alertPolicies:
+    - alertPolicyRef: payments-fast-burn
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: payments-completion
+  displayName: Платежи - завершение < 5 мин для 98% (учитывает окна провайдеров)
+spec:
+  service: payments
+  indicatorRef: payments-completion
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.98
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: payments-initiation-latency
+  displayName: Платежи - инициация P95 < 2 с для 95%
+spec:
+  service: payments
+  indicatorRef: payments-initiation-latency
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.95
+---
+apiVersion: openslo/v1
+kind: AlertPolicy
+metadata:
+  name: payments-fast-burn
+  displayName: Платежи - сжигание бюджета быстрее 5%/час
+spec:
+  description: Error budget 43 мин/мес (99,9% за 30 дней). Алерт P1 дежурному + CFO, потерянный GMV считается по среднему чеку
+  severity: P1
+  conditions:
+    - kind: burnrate
+      threshold: 0.05
+      lookbackWindow: 1h
+  notificationTargets:
+    - alertNotificationTargetRef: sms-duty
+    - alertNotificationTargetRef: email-cfo
+---
+apiVersion: openslo/v1
+kind: AlertNotificationTarget
+metadata:
+  name: sms-duty
+spec:
+  target: sms
+  description: Смс дежурному
+---
+apiVersion: openslo/v1
+kind: AlertNotificationTarget
+metadata:
+  name: email-cfo
+spec:
+  target: email
+  description: Уведомление CFO о потерянном GMV

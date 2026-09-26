@@ -30,12 +30,17 @@ node "AWS af-south-1, Кейптаун (EKS, 1 кластер)" as region #DAE8F
 node "MDXi - локальный провайдер" as lagos #D5E8D4 {
   node "pii-1\nМодуль ПДн (Go)" as pii1
   database "PostgreSQL ПДн primary" as png1
-  database "PostgreSQL ПДн реплика" as png2
   node "Vault" as vault
 }
 
 node "Вторая площадка, Нигерия" as lagos2 #D5E8D4 {
+  database "PostgreSQL ПДн реплика" as png2
   database "Бэкапы ПДн" as backups
+}
+
+node "AWS eu-west-1" as dr #E1D5E7 {
+  node "S3: копии снапшотов + WAL" as drs3
+  node "Запасное окружение по Terraform" as driac
 }
 
 node "Партнеры (SaaS)" as partners #F8CECC {
@@ -62,6 +67,7 @@ pii1 --> png1
 png1 --> png2 : async replica
 pii1 --> vault
 png1 --> backups : бэкап ежедневно
+pg1 --> drs3 : копия снапшота + WAL\nежедневно
 app1 --> pay : HTTPS
 app1 --> log : HTTPS
 app1 --> sms : HTTPS

@@ -1,5 +1,7 @@
 # SLO-контракт. Уведомления
 
+В формате OpenSLO: [./notifications.yaml](./notifications.yaml)
+
 ## SLI
 
 | SLI | Определение |Источник измерения |
