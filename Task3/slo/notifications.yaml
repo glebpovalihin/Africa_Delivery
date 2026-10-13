@@ -1,0 +1,86 @@
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: notifications-ingestion
+  displayName: Прием событий уведомлений
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      sum(rate(notifications_events_enqueued_total{service="notifications"}[5m]))
+      /
+      sum(rate(notifications_events_total{service="notifications"}[5m]))
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: notifications-dispatch-latency
+  displayName: Отправка шлюзу < 60 с от события
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      histogram_quantile(0.95,
+        sum(rate(notifications_dispatch_lag_seconds_bucket{service="notifications"}[5m])) by (le)
+      ) < 60
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: notifications-delivery-24h
+  displayName: Итоговая доставка за 24 ч
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      sum(increase(notifications_delivered_total{service="notifications"}[24h]))
+      /
+      sum(increase(notifications_sent_total{service="notifications"}[24h]))
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: notifications-ingestion
+  displayName: Уведомления - прием событий 99%
+spec:
+  service: notifications
+  indicatorRef: notifications-ingestion
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.99
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: notifications-dispatch
+  displayName: Уведомления - отправка < 60 с для 95%
+spec:
+  service: notifications
+  indicatorRef: notifications-dispatch-latency
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.95
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: notifications-delivery
+  displayName: Уведомления - итоговая доставка 97% за 24 ч с учетом оффлайн получателей
+spec:
+  service: notifications
+  indicatorRef: notifications-delivery-24h
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.97

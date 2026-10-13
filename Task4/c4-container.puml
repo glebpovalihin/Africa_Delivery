@@ -1,0 +1,54 @@
+@startuml c4-container
+!include <C4/C4_Container>
+
+title Africa Delivery - C4 Container Diagram
+
+Person(buyer, "Покупатель", "Android, 3G/4G")
+Person(seller, "Продавец")
+
+System_Ext(mpesa, "M-Pesa / Flutterwave / Paystack", "Платежи, выплаты, токенизация реквизитов")
+System_Ext(logistics, "Sendbox / Sendy", "Логистика по API")
+System_Ext(smsgw, "SMS/USSD-шлюз", "Офлайн-заказы и уведомления")
+System_Ext(whatsapp, "WhatsApp Business API", "Онбординг продавцов")
+
+System_Boundary(cdn, "CDN edge (Лагос, Найроби, Йоханнесбург)") {
+  Container(edge, "CDN / edge cache", "CloudFront", "Статика, фото, кеш витрины")
+}
+
+System_Boundary(cloud, "Облачный регион AWS af-south-1 (Кейптаун)") {
+  Container(app, "Монолит Africa Delivery", "Go", "Модули: каталог, заказ, оркестрация, уведомления, интеграции, data gate")
+  ContainerDb(pg, "PostgreSQL", "multi-AZ", "Каталог, заказы по псевдонимам, платежный журнал")
+  ContainerDb(pii_ke, "PostgreSQL, схемы ПДн", "", "ПДн Кении и ЮАР, отдельные ключи")
+  Container(redis, "Redis", "ElastiCache", "Кеш каталога, сессии USSD")
+  ContainerQueue(queue, "Очередь событий", "SQS", "Уведомления, фулфилмент, повторы к партнерам")
+  ContainerDb(s3, "Object storage", "S3", "Фото товаров, бэкапы")
+}
+
+System_Boundary(lagos, "Узел ПДн, Лагос (MDXi, локальный провайдер)") {
+  Container(pii_svc, "Модуль ПДн", "Go", "Только операции с ПДн граждан Нигерии")
+  ContainerDb(pii_ng, "PostgreSQL ПДн", "self-managed + standby", "Профили, адреса, связка псевдоним-личность")
+  Container(vault, "Vault", "open source", "ключи для контура Нигерии, соль")
+}
+
+Rel(buyer, edge, "Витрина, статика", "HTTPS")
+Rel(buyer, app, "Заказ, оплата, ЛК", "HTTPS")
+Rel(buyer, smsgw, "Заказ без интернета", "USSD/SMS")
+Rel(smsgw, app, "Сессии USSD", "API")
+Rel(seller, whatsapp, "Товары, заказы", "WhatsApp")
+Rel(whatsapp, app, "Webhook-и", "API")
+Rel(seller, app, "ЛК продавца", "HTTPS")
+
+Rel(edge, app, "Cache miss", "HTTPS")
+Rel(app, pg, "Каталог, заказы, платежный журнал", "SQL")
+Rel(app, pii_ke, "ПДн Кении/ЮАР", "SQL")
+Rel(app, redis, "Кеш", "Redis protocol")
+Rel(app, queue, "События", "SDK")
+Rel(app, s3, "Фото, бэкапы", "S3 API")
+Rel(app, pii_svc, "ПДн Нигерии: чтение/запись, псевдонимизация", "HTTPS + mTLS")
+Rel(pii_svc, pii_ng, "SQL", "localhost")
+Rel(pii_svc, vault, "Ключи, соль", "API")
+Rel(app, mpesa, "Инициация платежей, выплаты", "API")
+Rel(app, logistics, "Отправления, статусы", "API")
+Rel(app, smsgw, "Уведомления", "API")
+
+@enduml

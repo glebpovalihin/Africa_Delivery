@@ -1,0 +1,111 @@
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: catalog-availability
+  displayName: Доступность каталога
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      sum(rate(http_requests_total{service="catalog",status=~"2..|304"}[5m]))
+      /
+      sum(rate(http_requests_total{service="catalog"}[5m]))
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: catalog-latency-p99
+  displayName: Задержка чтения каталога P99 < 300 мс
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      histogram_quantile(0.99,
+        sum(rate(http_request_duration_seconds_bucket{service="catalog"}[5m])) by (le)
+      ) < 0.3
+---
+apiVersion: openslo/v1
+kind: SLI
+metadata:
+  name: catalog-freshness
+  displayName: Актуальность цен в кеше в пределах TTL 15 мин
+spec:
+  thresholdMetric:
+    metricSource:
+      type: Prometheus
+    raw: |
+      sum(cache_entry_age_seconds{service="catalog",key="price"} <= 900)
+      /
+      sum(cache_entries_total{service="catalog",key="price"})
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: catalog-availability
+  displayName: Каталог - доступность 99%
+spec:
+  service: catalog
+  indicatorRef: catalog-availability
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.99
+  alertPolicies:
+    - alertPolicyRef: catalog-fast-burn
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: catalog-latency
+  displayName: Каталог - P99 < 300 мс для 99% запросов
+spec:
+  service: catalog
+  indicatorRef: catalog-latency-p99
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.99
+---
+apiVersion: openslo/v1
+kind: SLO
+metadata:
+  name: catalog-freshness
+  displayName: Каталог - актуальность цен 99% в пределах TTL
+spec:
+  service: catalog
+  indicatorRef: catalog-freshness
+  budgetingMethod: Occurrences
+  timeWindow:
+    - duration: 30d
+      isRolling: true
+  objectives:
+    - target: 0.99
+---
+apiVersion: openslo/v1
+kind: AlertPolicy
+metadata:
+  name: catalog-fast-burn
+  displayName: Каталог - сжигание бюджета быстрее 2%/час
+spec:
+  description: Error budget 7,2 ч/мес. Алерт при сжигании быстрее 2%/час. Исключения - плановые миграции, анонсированы заранее
+  severity: P2
+  conditions:
+    - kind: burnrate
+      threshold: 0.02
+      lookbackWindow: 1h
+  notificationTargets:
+    - alertNotificationTargetRef: telegram-duty
+---
+apiVersion: openslo/v1
+kind: AlertNotificationTarget
+metadata:
+  name: telegram-duty
+spec:
+  target: telegram
+  description: Telegram-группа дежурных
